@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sesiones</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sesiones">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#c2410c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{
+  --bg:#f3f4f1; --paper:#ffffff; --ink:#1d2321; --muted:#5e6964; --line:#d9ddd8;
+  --accent:#c2410c; --accent-soft:#fbe5d8; --ok:#2f7a4a; --ok-soft:#dcefe2;
+  --f-display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#141816; --paper:#1d2320; --ink:#e7ebe8; --muted:#9aa59f; --line:#323a36;
+  --accent:#f08a4b; --accent-soft:#3a2418; --ok:#6cc58c; --ok-soft:#1b3324; color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-top:calc(env(safe-area-inset-top,0px) + 14px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 64px)}
+[hidden]{display:none!important}
+.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2{font-family:var(--f-display);text-wrap:balance;margin:0}
+h1{font-size:1.9rem;font-weight:800;letter-spacing:-.01em}
+h2{font-size:1.15rem;font-weight:600}
+.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:700}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:10px 14px;min-height:44px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+button.link{border:none;background:none;color:var(--accent);padding:6px 0;min-height:0;font-weight:700}
+button.small{min-height:36px;padding:6px 10px;font-size:.88rem}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input[type=text],input[type=url],input[type=date],input[type=number],textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-height:44px}
+textarea{resize:vertical;min-height:88px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted);font-weight:700;min-width:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:520px){.grid2{grid-template-columns:1fr}}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.status{font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+.list{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.sess{display:flex;flex-direction:column;gap:6px;text-align:left;width:100%}
+.sess .n{font-family:var(--f-display);font-weight:600;font-size:1.08rem;overflow-wrap:anywhere}
+.meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:.85rem;color:var(--muted)}
+.pill{font-size:.75rem;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--line);color:var(--ink)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.no{background:var(--accent-soft);color:var(--accent)}
+.pill.sx{background:var(--ink);color:var(--paper)}
+section{display:flex;flex-direction:column;gap:12px}
+.sechead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:6px}
+.concept{display:flex;flex-direction:column;gap:10px}
+.crow{display:grid;grid-template-columns:2.2rem 1fr 5.5rem;gap:8px;align-items:center}
+.cnum{font-family:var(--f-mono);font-size:.95rem;color:var(--accent);text-align:center}
+.crow input[type=number]{text-align:right;font-family:var(--f-mono)}
+.mins{font-family:var(--f-mono);font-size:.85rem;color:var(--muted)}
+.prop,.chk{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.prop:last-child,.chk:last-child{border-bottom:none}
+.prop input[type=checkbox],.chk input[type=checkbox]{width:22px;height:22px;accent-color:var(--ok);flex:none}
+.prop input[type=text]{border:none;padding:6px 0;min-height:36px;background:transparent}
+.prop .st{font-size:.75rem;font-weight:700;flex:none}
+.chk span{flex:1;min-width:0}
+.chk.done span{color:var(--muted);text-decoration:line-through}
+.group{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;padding-top:10px}
+.bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--ok)}
+.slug{font-family:var(--f-mono);font-size:.82rem;overflow-wrap:anywhere;background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.empty{text-align:center;color:var(--muted);padding:28px 12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.notice{background:var(--accent-soft);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:.9rem}
+.sw{display:flex;align-items:center;gap:8px;font-weight:700;font-size:.92rem}
+.sw input{width:22px;height:22px;accent-color:var(--accent)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:middle}
+.dot.on{background:var(--ok)} .dot.off{background:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="msg" class="notice" hidden></div>
+
+  <div id="vList">
+    <div class="top">
+      <div><div class="eyebrow">Stock · guiones de rodaje</div><h1>Sesiones</h1></div>
+      <button class="primary" id="btnNew">+ Nueva sesión</button>
+    </div>
+    <div class="row" style="margin:14px 0 4px;justify-content:space-between">
+      <label class="sw"><input type="checkbox" id="showArch"> Ver archivadas</label>
+      <button class="link" id="btnCfg"><span class="dot" id="dot"></span><span id="stSync">Sin conectar</span></button>
+    </div>
+    <div class="list" id="list"></div>
+  </div>
+
+  <div id="vCfg" hidden>
+    <div class="wrap" style="gap:18px">
+      <button class="link" id="cfgBack" style="align-self:flex-start">‹ Volver</button>
+      <h1>Sincronización</h1>
+      <p style="margin:0;color:var(--muted)">Las sesiones se guardan en tu hoja de Google “Cuaderno de Sesiones”. Pega aquí la dirección de su aplicación web (termina en <code>/exec</code>). Se pone una vez en cada aparato (ordenador y móvil). No se envía a ningún otro sitio.</p>
+      <label class="f">Dirección de la hoja (URL /exec)<input type="url" id="cfgUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+      <div class="row"><button class="primary" id="cfgSave">Guardar y sincronizar</button><span class="status" id="cfgSt"></span></div>
+    </div>
+  </div>
+
+  <div id="vDetail" hidden></div>
+</div>
+
+<script>
+const CHECK = [
+  ["Días antes", [
+    ["nombre","Nombre de la sesión decidido (AAAA-MM-DD_Nombre)"],
+    ["hermanas","Stocksy: modelos, vestuario y localización no coinciden 2 de 3 con otra sesión"],
+    ["guion","Guion breve hecho"],
+    ["permiso","Localización: permiso si es privada y hora de luz mirada"],
+    ["vestuario","Vestuario confirmado: sin logos ni letras, colores que no repiten"]]],
+  ["Papeles", [
+    ["mr","Model releases impresos (menores: firma padre o madre)"],
+    ["pr","Property release si hace falta (casa, local, tuk-tuk, vendedor)"],
+    ["fotorel","Foto de cada release firmado al terminar"]]],
+  ["Equipo", [
+    ["bat","Baterías cargadas (cámara, Osmo, props) y de repuesto"],
+    ["tarj","Tarjetas con espacio (ya descargadas y copiadas)"],
+    ["ajustes","Ajustes de cámara: resolución, fps, perfil de color"],
+    ["cinta","Cinta negra mate para tapar logos"],
+    ["tripode","Trípode, gimbal, filtros ND"]]],
+  ["Personas", [
+    ["agua","Agua, toallitas y algo de comer"],
+    ["pago","Pago a modelos preparado"]]],
+  ["En la sesión", [
+    ["orden","Primero lo más importante del guion"],
+    ["hv","Horizontales y verticales de cada escena"],
+    ["fondo","Fondo sin marcas ni caras sin release"],
+    ["fotofin","Foto del vestuario y del sitio al acabar"]]]
+];
+const CHECK_KEYS = CHECK.flatMap(g=>g[1].map(i=>i[0]));
+
+/* ---------- almacenamiento: copia local + hoja de Google ---------- */
+const LS_DATA="cuaderno.sesiones", LS_URL="cuaderno.url", LS_PEND="cuaderno.pendientes";
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let store=ls.get(LS_DATA,{});          // id -> sesión
+let pending=new Set(ls.get(LS_PEND,[])); // ids con cambios sin subir
+let syncing=false, online=null;
+const apiUrl=()=>ls.get(LS_URL,"");
+function persist(){ls.set(LS_DATA,store);ls.set(LS_PEND,[...pending])}
+
+function setSync(state,text){online=state;$("#dot").className="dot "+(state===true?"on":state===false?"off":"");$("#stSync").textContent=text}
+
+async function sync(){
+  const url=apiUrl();
+  if(!url){setSync(null,"Configurar sincronización");return}
+  if(syncing)return; syncing=true;
+  try{
+    if(pending.size){
+      const sesiones=[...pending].map(id=>store[id]).filter(Boolean);
+      const r=await fetch(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({sesiones})});
+      const j=await r.json(); if(!j.ok)throw new Error(j.error||"error");
+      sesiones.forEach(s=>{if(store[s.id]?.actualizada===s.actualizada)pending.delete(s.id)});
+    }
+    const r=await fetch(url+(url.includes("?")?"&":"?")+"t="+Date.now());
+    const j=await r.json(); if(!j.ok)throw new Error(j.error||"error");
+    let changed=false;
+    for(const s of j.sesiones){
+      const mine=store[s.id];
+      if(pending.has(s.id))continue;
+      if(!mine||(s.actualizada||"")>(mine.actualizada||"")){store[s.id]=s;changed=true}
+    }
+    persist();
+    setSync(true, pending.size?"Cambios pendientes":"Sincronizado "+new Date().toLocaleTimeString("es",{hour:"2-digit",minute:"2-digit"}));
+    if(changed)onRemoteChange();
+  }catch(e){ setSync(false,"Sin conexión · guardado en este aparato"); }
+  finally{ syncing=false; }
+}
+
+/* ---------- interfaz ---------- */
+let cur=null, saveTimer=null;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const slug=s=>(s.fecha||"AAAA-MM-DD")+"_"+(s.nombre||"Nombre");
+const mins=s=>(s.conceptos||[]).reduce((a,c)=>a+(+c.minutos||0),0);
+function showMsg(t){const m=$("#msg");m.textContent=t;m.hidden=!t}
+function show(v){["#vList","#vCfg","#vDetail"].forEach(id=>$(id).hidden=id!==v);window.scrollTo(0,0)}
+
+function renderList(){
+  const arch=$("#showArch").checked;
+  const rows=Object.values(store).filter(s=>!!s.archivada===arch).sort((a,b)=>(b.fecha||"9").localeCompare(a.fecha||"9"));
+  const el=$("#list");
+  if(!rows.length){el.innerHTML=`<div class="empty card">${arch?"No hay sesiones archivadas.":"Aún no hay sesiones. Pulsa <b>+ Nueva sesión</b>: nombre, fecha, conceptos, props y checklist."}</div>`;return}
+  el.innerHTML=rows.map(s=>{
+    const props=s.props||[],have=props.filter(p=>p.tengo).length;
+    const ck=CHECK_KEYS.filter(k=>(s.checklist||{})[k]).length;
+    return `<button class="card sess" data-id="${esc(s.id)}">
+      <span class="n">${esc(slug(s))}</span>
+      <span class="meta">${s.stocksy?'<span class="pill sx">Stocksy</span>':''}
+        <span>${esc(s.lugar||"Sin localización")}</span>
+        <span class="mins">${(s.conceptos||[]).length} conceptos · ${mins(s)} min</span></span>
+      <span class="meta">
+        <span class="pill ${props.length&&have===props.length?'ok':'no'}">Props ${have}/${props.length}</span>
+        <span class="pill ${ck===CHECK_KEYS.length?'ok':''}">Checklist ${ck}/${CHECK_KEYS.length}</span></span>
+    </button>`}).join("");
+}
+
+function onRemoteChange(){
+  if(!cur){renderList();return}
+  const remote=store[cur.id];
+  if(remote&&remote.actualizada!==cur.actualizada&&!document.activeElement?.matches("input,textarea")){cur=JSON.parse(JSON.stringify(remote));renderDetail()}
+}
+
+function openSession(id){cur=JSON.parse(JSON.stringify(store[id]));renderDetail();show("#vDetail")}
+function closeSession(){commit();cur=null;renderList();show("#vList")}
+
+function renderDetail(){
+  const s=cur, d=$("#vDetail");
+  const ck=CHECK_KEYS.filter(k=>(s.checklist||{})[k]).length;
+  const props=s.props||[], have=props.filter(p=>p.tengo).length;
+  d.innerHTML=`
+  <div class="wrap" style="gap:22px">
+    <div class="top"><button class="link" id="back">‹ Sesiones</button><span class="status" id="stDet">Guardado</span></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="eyebrow">Sesión</div>
+      <h1 style="overflow-wrap:anywhere">${esc(s.nombre||"Sesión nueva")}</h1>
+      <div class="slug"><span id="slugTxt">${esc(slug(s))}</span><button class="small" id="copy">Copiar</button></div>
+    </div>
+    <section class="card">
+      <div class="sechead"><h2>Datos</h2></div>
+      <div class="grid2">
+        <label class="f">Nombre (sin fecha)<input type="text" data-k="nombre" value="${esc(s.nombre)}" placeholder="PeopleInCity FamilyVlog"></label>
+        <label class="f">Fecha<input type="date" data-k="fecha" value="${esc(s.fecha)}"></label>
+        <label class="f">Localización<input type="text" data-k="lugar" value="${esc(s.lugar)}"></label>
+        <label class="f">Modelos<input type="text" data-k="modelos" value="${esc(s.modelos)}"></label>
+      </div>
+      <label class="f">Vestuario<input type="text" data-k="vestuario" value="${esc(s.vestuario)}"></label>
+      <label class="sw"><input type="checkbox" id="f_stocksy" ${s.stocksy?"checked":""}> Va a Stocksy (exclusiva: vigilar sesiones hermanas)</label>
+    </section>
+    <section class="card">
+      <div class="sechead"><h2>Guion general</h2></div>
+      <textarea data-k="guion" rows="4" placeholder="Idea de la sesión, tono, orden, cosas a evitar…">${esc(s.guion)}</textarea>
+    </section>
+    <section class="card">
+      <div class="sechead"><h2>Conceptos</h2><span class="mins">Total ${mins(s)} min</span></div>
+      <div style="display:flex;flex-direction:column;gap:18px">
+      ${(s.conceptos||[]).map((c,i)=>`
+        <div class="concept" data-cid="${esc(c.id)}">
+          <div class="crow"><span class="cnum">${String(i+1).padStart(2,"0")}</span>
+            <input type="text" data-ck="titulo" value="${esc(c.titulo)}" placeholder="Concepto" aria-label="Título del concepto">
+            <input type="number" data-ck="minutos" value="${esc(c.minutos)}" min="0" inputmode="numeric" aria-label="Minutos"></div>
+          <textarea data-ck="guion" rows="3" placeholder="Mini guion: planos de este concepto">${esc(c.guion)}</textarea>
+          <div class="row"><button class="small" data-act="up">↑</button><button class="small" data-act="down">↓</button><button class="small" data-act="del">Quitar concepto</button></div>
+        </div>`).join("")||'<div class="empty">Sin conceptos todavía.</div>'}
+      </div>
+      <button id="addC">+ Añadir concepto</button>
+    </section>
+    <section class="card">
+      <div class="sechead"><h2>Props</h2><span class="pill ${props.length&&have===props.length?'ok':'no'}">Tengo ${have}/${props.length}</span></div>
+      <div>${props.map(p=>`
+        <div class="prop" data-pid="${esc(p.id)}">
+          <input type="checkbox" ${p.tengo?"checked":""} aria-label="Lo tengo">
+          <input type="text" value="${esc(p.nombre)}" placeholder="Prop">
+          <span class="st" style="color:var(${p.tengo?'--ok':'--accent'})">${p.tengo?"Lo tengo":"Falta"}</span>
+          <button class="small" data-act="delp" aria-label="Quitar prop">✕</button>
+        </div>`).join("")||'<div class="empty">Sin props.</div>'}</div>
+      <button id="addP">+ Añadir prop</button>
+    </section>
+    <section class="card">
+      <div class="sechead"><h2>Checklist antes de la sesión</h2><span class="mins">${ck}/${CHECK_KEYS.length}</span></div>
+      <div class="bar"><i style="width:${Math.round(ck*100/CHECK_KEYS.length)}%"></i></div>
+      <div>${CHECK.map(([g,items])=>`<div class="group">${g}</div>`+items.map(([k,t])=>`
+        <label class="chk ${(s.checklist||{})[k]?'done':''}"><input type="checkbox" data-chk="${k}" ${(s.checklist||{})[k]?"checked":""}><span>${esc(t)}</span></label>`).join("")).join("")}</div>
+    </section>
+    <div class="row"><button id="arch">${s.archivada?"Recuperar de archivadas":"Archivar sesión"}</button></div>
+  </div>`;
+  bindDetail();
+}
+
+function bindDetail(){
+  const d=$("#vDetail");
+  $("#back").onclick=closeSession;
+  $("#copy").onclick=()=>{const t=slug(cur);try{navigator.clipboard.writeText(t).then(()=>{$("#copy").textContent="Copiado"},selectSlug)}catch(e){selectSlug()}};
+  d.querySelectorAll("[data-k]").forEach(el=>el.addEventListener("input",()=>{cur[el.dataset.k]=el.value;$("#slugTxt").textContent=slug(cur);touch()}));
+  $("#f_stocksy").onchange=e=>{cur.stocksy=e.target.checked;touch(true)};
+  d.querySelectorAll(".concept").forEach(box=>{
+    const c=cur.conceptos.find(x=>x.id===box.dataset.cid);
+    box.querySelectorAll("[data-ck]").forEach(el=>el.addEventListener("input",()=>{c[el.dataset.ck]=el.dataset.ck==="minutos"?(+el.value||0):el.value;touch()}));
+    box.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>{
+      const a=cur.conceptos,i=a.indexOf(c);
+      if(b.dataset.act==="del")a.splice(i,1);
+      if(b.dataset.act==="up"&&i>0)[a[i-1],a[i]]=[a[i],a[i-1]];
+      if(b.dataset.act==="down"&&i<a.length-1)[a[i+1],a[i]]=[a[i],a[i+1]];
+      touch(true);renderDetail()});
+  });
+  $("#addC").onclick=()=>{(cur.conceptos||=[]).push({id:uid(),titulo:"",minutos:5,guion:""});touch(true);renderDetail();[...document.querySelectorAll(".concept input[data-ck=titulo]")].pop()?.focus()};
+  d.querySelectorAll(".prop").forEach(row=>{
+    const p=cur.props.find(x=>x.id===row.dataset.pid);
+    row.querySelector("input[type=checkbox]").onchange=e=>{p.tengo=e.target.checked;touch(true);renderDetail()};
+    row.querySelector("input[type=text]").addEventListener("input",e=>{p.nombre=e.target.value;touch()});
+    row.querySelector("[data-act=delp]").onclick=()=>{cur.props.splice(cur.props.indexOf(p),1);touch(true);renderDetail()};
+  });
+  $("#addP").onclick=()=>{(cur.props||=[]).push({id:uid(),nombre:"",tengo:false});touch(true);renderDetail();[...document.querySelectorAll(".prop input[type=text]")].pop()?.focus()};
+  d.querySelectorAll("[data-chk]").forEach(el=>el.onchange=()=>{(cur.checklist||={})[el.dataset.chk]=el.checked;touch(true);renderDetail()});
+  $("#arch").onclick=()=>{cur.archivada=!cur.archivada;touch(true);closeSession()};
+}
+function selectSlug(){const r=document.createRange();r.selectNodeContents($("#slugTxt"));const s=getSelection();s.removeAllRanges();s.addRange(r)}
+
+function touch(now){const st=$("#stDet");if(st)st.textContent="Guardando…";clearTimeout(saveTimer);saveTimer=setTimeout(commit,now?50:700)}
+function commit(){
+  clearTimeout(saveTimer); if(!cur)return;
+  const prev=store[cur.id]; if(prev&&JSON.stringify({...prev,actualizada:0})===JSON.stringify({...cur,actualizada:0}))return;
+  cur.actualizada=new Date().toISOString();
+  store[cur.id]=JSON.parse(JSON.stringify(cur)); pending.add(cur.id); persist();
+  const st=$("#stDet"); if(st)st.textContent=apiUrl()?"Guardado":"Guardado en este aparato";
+  sync();
+}
+
+$("#btnNew").onclick=()=>{
+  cur={id:uid()+uid(),nombre:"",fecha:"",lugar:"",modelos:"",vestuario:"",guion:"",stocksy:false,conceptos:[],props:[],checklist:{},creada:new Date().toISOString(),actualizada:""};
+  commit(); renderDetail(); show("#vDetail"); document.querySelector("[data-k=nombre]").focus();
+};
+$("#showArch").onchange=renderList;
+$("#list").addEventListener("click",e=>{const b=e.target.closest("[data-id]");if(b)openSession(b.dataset.id)});
+$("#btnCfg").onclick=()=>{$("#cfgUrl").value=apiUrl();$("#cfgSt").textContent="";show("#vCfg")};
+$("#cfgBack").onclick=()=>{renderList();show("#vList")};
+$("#cfgSave").onclick=async()=>{
+  const u=$("#cfgUrl").value.trim();
+  if(u&&!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(u)){$("#cfgSt").textContent="Esa dirección no parece la de la hoja (debe acabar en /exec).";return}
+  ls.set(LS_URL,u); Object.keys(store).forEach(id=>pending.add(id)); persist();
+  $("#cfgSt").textContent="Sincronizando…"; await sync();
+  $("#cfgSt").textContent=online?"Listo: sincronizado.":"No se pudo conectar. Revisa la dirección.";
+};
+
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")sync();else commit()});
+window.addEventListener("pagehide",commit);
+window.addEventListener("online",sync);
+setInterval(()=>{if(document.visibilityState==="visible")sync()},30000);
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+renderList(); sync();
+</script>
+</body>
+</html>
