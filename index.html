@@ -149,7 +149,7 @@ const LS_DATA="cuaderno.sesiones", LS_URL="cuaderno.url", LS_PEND="cuaderno.pend
 const ls={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let store=ls.get(LS_DATA,{});          // id -> sesión
 let pending=new Set(ls.get(LS_PEND,[])); // ids con cambios sin subir
-let syncing=false, online=null;
+let syncing=false, again=false, online=null;
 const apiUrl=()=>ls.get(LS_URL,"");
 function persist(){ls.set(LS_DATA,store);ls.set(LS_PEND,[...pending])}
 
@@ -158,7 +158,7 @@ function setSync(state,text){online=state;$("#dot").className="dot "+(state===tr
 async function sync(){
   const url=apiUrl();
   if(!url){setSync(null,"Configurar sincronización");return}
-  if(syncing)return; syncing=true;
+  if(syncing){again=true;return} syncing=true; again=false;
   try{
     if(pending.size){
       const sesiones=[...pending].map(id=>store[id]).filter(Boolean);
@@ -178,7 +178,7 @@ async function sync(){
     setSync(true, pending.size?"Cambios pendientes":"Sincronizado "+new Date().toLocaleTimeString("es",{hour:"2-digit",minute:"2-digit"}));
     if(changed)onRemoteChange();
   }catch(e){ setSync(false,"Sin conexión · guardado en este aparato"); }
-  finally{ syncing=false; }
+  finally{ syncing=false; if(again)setTimeout(sync,100); }
 }
 
 /* ---------- interfaz ---------- */
