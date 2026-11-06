@@ -84,6 +84,19 @@ section{display:flex;flex-direction:column;gap:12px}
 .sw input{width:22px;height:22px;accent-color:var(--accent)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:middle}
 .dot.on{background:var(--ok)} .dot.off{background:var(--accent)}
+.blk{font-family:var(--f-display);font-size:1.25rem;font-weight:800;letter-spacing:.01em;text-transform:uppercase;border-top:3px solid var(--accent);padding-top:8px;margin-top:6px}
+.chk .nm{flex:1;min-width:0}
+.chk input[type=text]{border:none;padding:6px 0;min-height:36px;background:transparent}
+.cnt{font-family:var(--f-mono);font-size:.82rem;color:var(--muted);flex:none}
+.tog{border:none;background:none;padding:6px 8px;min-height:36px;font-family:var(--f-mono);font-size:.82rem;color:var(--accent);font-weight:700}
+.plano{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)}
+.plano input[type=checkbox]{width:22px;height:22px;accent-color:var(--ok);flex:none}
+.plano input[type=text]{border:none;padding:6px 0;min-height:36px;background:transparent}
+.plano.done input[type=text]{color:var(--muted);text-decoration:line-through}
+.crow2{display:grid;grid-template-columns:2.2rem 1fr 5.5rem;gap:8px;align-items:center}
+.crow2 input[type=checkbox]{width:24px;height:24px;accent-color:var(--ok);justify-self:center}
+.concept.done .crow2 input[type=text]{color:var(--muted)}
+.dest{display:flex;gap:18px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -116,42 +129,64 @@ section{display:flex;flex-direction:column;gap:12px}
 </div>
 
 <script>
-const CHECK = [
-  ["Días antes", [
-    ["nombre","Nombre de la sesión decidido (AAAA-MM-DD_Nombre)"],
-    ["hermanas","Stocksy: modelos, vestuario y localización no coinciden 2 de 3 con otra sesión"],
-    ["guion","Guion breve hecho"],
-    ["permiso","Localización: permiso si es privada y hora de luz mirada"],
-    ["vestuario","Vestuario confirmado: sin logos ni letras, colores que no repiten"]]],
-  ["Papeles", [
-    ["mr","Model releases impresos (menores: firma padre o madre)"],
-    ["pr","Property release si hace falta (casa, local, tuk-tuk, vendedor)"],
-    ["fotorel","Foto de cada release firmado al terminar"]]],
-  ["Equipo", [
-    ["bat","Baterías cargadas (cámara, Osmo, props) y de repuesto"],
-    ["tarj","Tarjetas con espacio (ya descargadas y copiadas)"],
-    ["ajustes","Ajustes de cámara: resolución, fps, perfil de color"],
-    ["cinta","Cinta negra mate para tapar logos"],
-    ["tripode","Trípode, gimbal, filtros ND"]]],
-  ["Personas", [
-    ["agua","Agua, toallitas y algo de comer"],
-    ["pago","Pago a modelos preparado"]]],
-  ["En la sesión", [
-    ["orden","Primero lo más importante del guion"],
-    ["hv","Horizontales y verticales de cada escena"],
-    ["fondo","Fondo sin marcas ni caras sin release"],
-    ["fotofin","Foto del vestuario y del sitio al acabar"]]]
+/* Casillas fijas de cada bloque (clave, texto corto). Las claves viejas se conservan en los datos. */
+const BLOQUES = [
+  ["Antes de salir de casa", [
+    ["nombre","Nombre decidido"],
+    ["guion","Guion hecho"],
+    ["permiso","Permiso localización"],
+    ["vestuario","Vestuario preparado"],
+    ["mr","Releases impresos"],
+    ["pr","Property release"],
+    ["bat","Baterías"],
+    ["tarj","Tarjetas"],
+    ["ajustes","Ajustes cámara"],
+    ["cinta","Cinta negra"],
+    ["tripode","Trípode y filtros"],
+    ["agua","Agua y comida"],
+    ["pago","Pago modelos"]]],
+  ["Al empezar la sesión", [
+    ["revVest","Vestuario revisado"],
+    ["revProps","Props revisados"]]],
+  ["Durante la sesión", [
+    ["orden","Lo importante primero"],
+    ["hv","Horizontal y vertical"],
+    ["fondo","Fondo limpio"],
+    ["fotorel","Fotos de releases"],
+    ["fotofin","Foto vestuario y sitio"]]]
 ];
-const CHECK_KEYS = CHECK.flatMap(g=>g[1].map(i=>i[0]));
+const PARTE_TXT="Parte Stocksy hecha: 2 de 3 distintos (vestuario, modelos, localización)";
+const parteOn=s=>!!(s.destino&&s.destino.micros&&s.destino.stocksy);
 
 /* ---------- almacenamiento: copia local + hoja de Google ---------- */
 const LS_DATA="cuaderno.sesiones", LS_URL="cuaderno.url", LS_PEND="cuaderno.pendientes";
 const ls={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const uid=()=>Math.random().toString(36).slice(2,9);
+
+/* Pasa una sesión guardada con el formato antiguo al nuevo, sin perder nada. */
+function normalize(s){
+  if(!s||typeof s!=="object")return s;
+  if(!Array.isArray(s.modelos)){
+    const txt=String(s.modelos||"").trim();
+    if(txt){
+      s.modelos_antiguo=txt; // copia del texto original
+      s.modelos=txt.split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean).map(n=>({id:uid(),nombre:n,confirmado:false,release:false}));
+    } else s.modelos=[];
+  }
+  s.modelos=s.modelos.map(m=>typeof m==="string"?{id:uid(),nombre:m,confirmado:false,release:false}:m);
+  if(!s.destino||typeof s.destino!=="object")s.destino={micros:!s.stocksy,stocksy:!!s.stocksy};
+  s.stocksy=!!s.destino.stocksy; // la hoja de Google sigue leyendo este campo
+  s.conceptos=(s.conceptos||[]).map(c=>{if(!Array.isArray(c.planos))c.planos=[];if(c.hecho==null)c.hecho=false;return c});
+  s.props=s.props||[]; s.checklist=s.checklist||{};
+  return s;
+}
 let store=ls.get(LS_DATA,{});          // id -> sesión
+Object.values(store).forEach(normalize);
 let pending=new Set(ls.get(LS_PEND,[])); // ids con cambios sin subir
 let syncing=false, again=false, online=null;
 const apiUrl=()=>ls.get(LS_URL,"");
 function persist(){ls.set(LS_DATA,store);ls.set(LS_PEND,[...pending])}
+const $=s=>document.querySelector(s);
 
 function setSync(state,text){online=state;$("#dot").className="dot "+(state===true?"on":state===false?"off":"");$("#stSync").textContent=text}
 
@@ -172,7 +207,7 @@ async function sync(){
     for(const s of j.sesiones){
       const mine=store[s.id];
       if(pending.has(s.id))continue;
-      if(!mine||(s.actualizada||"")>(mine.actualizada||"")){store[s.id]=s;changed=true}
+      if(!mine||(s.actualizada||"")>(mine.actualizada||"")){store[s.id]=normalize(s);changed=true}
     }
     persist();
     setSync(true, pending.size?"Cambios pendientes":"Sincronizado "+new Date().toLocaleTimeString("es",{hour:"2-digit",minute:"2-digit"}));
@@ -183,30 +218,42 @@ async function sync(){
 
 /* ---------- interfaz ---------- */
 let cur=null, saveTimer=null;
-const $=s=>document.querySelector(s);
+const abiertos=new Set(); // conceptos con los planos desplegados (solo vista)
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const uid=()=>Math.random().toString(36).slice(2,9);
 const slug=s=>(s.fecha||"AAAA-MM-DD")+"_"+(s.nombre||"Nombre");
 const mins=s=>(s.conceptos||[]).reduce((a,c)=>a+(+c.minutos||0),0);
 function showMsg(t){const m=$("#msg");m.textContent=t;m.hidden=!t}
 function show(v){["#vList","#vCfg","#vDetail"].forEach(id=>$(id).hidden=id!==v);window.scrollTo(0,0)}
 
+/* Casillas de cada bloque de una sesión: [hechas, total] */
+function progreso(s){
+  const ck=s.checklist||{}, mo=s.modelos||[], cs=s.conceptos||[], props=s.props||[];
+  const cnt=(arr)=>[arr.filter(Boolean).length,arr.length];
+  const fijas=i=>BLOQUES[i][1].map(([k])=>!!ck[k]);
+  const antes=[...fijas(0),...props.map(p=>!!p.tengo),...mo.map(m=>!!m.confirmado)];
+  const empezar=fijas(1);
+  const durante=[...fijas(2),...mo.map(m=>!!m.release),...cs.map(c=>!!c.hecho),...cs.flatMap(c=>(c.planos||[]).map(p=>!!p.hecho))];
+  if(parteOn(s))durante.push(!!ck.parteStocksy);
+  return [cnt(antes),cnt(empezar),cnt(durante)];
+}
+
 function renderList(){
   const arch=$("#showArch").checked;
   const rows=Object.values(store).filter(s=>!!s.archivada===arch).sort((a,b)=>(b.fecha||"9").localeCompare(a.fecha||"9"));
   const el=$("#list");
-  if(!rows.length){el.innerHTML=`<div class="empty card">${arch?"No hay sesiones archivadas.":"Aún no hay sesiones. Pulsa <b>+ Nueva sesión</b>: nombre, fecha, conceptos, props y checklist."}</div>`;return}
+  if(!rows.length){el.innerHTML=`<div class="empty card">${arch?"No hay sesiones archivadas.":"Aún no hay sesiones. Pulsa <b>+ Nueva sesión</b>."}</div>`;return}
   el.innerHTML=rows.map(s=>{
     const props=s.props||[],have=props.filter(p=>p.tengo).length;
-    const ck=CHECK_KEYS.filter(k=>(s.checklist||{})[k]).length;
+    const pr=progreso(s), done=pr.reduce((a,x)=>a+x[0],0), tot=pr.reduce((a,x)=>a+x[1],0);
+    const d=s.destino||{};
     return `<button class="card sess" data-id="${esc(s.id)}">
       <span class="n">${esc(slug(s))}</span>
-      <span class="meta">${s.stocksy?'<span class="pill sx">Stocksy</span>':''}
+      <span class="meta">${d.micros?'<span class="pill">Micros</span>':''}${d.stocksy?'<span class="pill sx">Stocksy</span>':''}
         <span>${esc(s.lugar||"Sin localización")}</span>
         <span class="mins">${(s.conceptos||[]).length} conceptos · ${mins(s)} min</span></span>
       <span class="meta">
         <span class="pill ${props.length&&have===props.length?'ok':'no'}">Props ${have}/${props.length}</span>
-        <span class="pill ${ck===CHECK_KEYS.length?'ok':''}">Checklist ${ck}/${CHECK_KEYS.length}</span></span>
+        <span class="pill ${tot&&done===tot?'ok':''}">Hecho ${done}/${tot}</span></span>
     </button>`}).join("");
 }
 
@@ -216,13 +263,18 @@ function onRemoteChange(){
   if(remote&&remote.actualizada!==cur.actualizada&&!document.activeElement?.matches("input,textarea")){cur=JSON.parse(JSON.stringify(remote));renderDetail()}
 }
 
-function openSession(id){cur=JSON.parse(JSON.stringify(store[id]));renderDetail();show("#vDetail")}
+function openSession(id){cur=normalize(JSON.parse(JSON.stringify(store[id])));renderDetail();show("#vDetail")}
 function closeSession(){commit();cur=null;renderList();show("#vList")}
+
+const bloqueHead=(i,pr)=>`<h2 class="blk">${BLOQUES[i][0]} <span class="cnt">${pr[i][0]}/${pr[i][1]}</span></h2>`;
+const fijasHtml=(s,i)=>BLOQUES[i][1].map(([k,t])=>chkHtml(`data-chk="${k}"`,!!(s.checklist||{})[k],esc(t))).join("");
+const chkHtml=(attr,on,inner)=>`<label class="chk ${on?'done':''}"><input type="checkbox" ${attr} ${on?"checked":""}><span>${inner}</span></label>`;
 
 function renderDetail(){
   const s=cur, d=$("#vDetail");
-  const ck=CHECK_KEYS.filter(k=>(s.checklist||{})[k]).length;
   const props=s.props||[], have=props.filter(p=>p.tengo).length;
+  const pr=progreso(s), dest=s.destino||{};
+  const modelos=s.modelos||[], conceptos=s.conceptos||[];
   d.innerHTML=`
   <div class="wrap" style="gap:22px">
     <div class="top"><button class="link" id="back">‹ Sesiones</button><span class="status" id="stDet">Guardado</span></div>
@@ -237,28 +289,27 @@ function renderDetail(){
         <label class="f">Nombre (sin fecha)<input type="text" data-k="nombre" value="${esc(s.nombre)}" placeholder="PeopleInCity FamilyVlog"></label>
         <label class="f">Fecha<input type="date" data-k="fecha" value="${esc(s.fecha)}"></label>
         <label class="f">Localización<input type="text" data-k="lugar" value="${esc(s.lugar)}"></label>
-        <label class="f">Modelos<input type="text" data-k="modelos" value="${esc(s.modelos)}"></label>
+        <label class="f">Vestuario<input type="text" data-k="vestuario" value="${esc(s.vestuario)}"></label>
       </div>
-      <label class="f">Vestuario<input type="text" data-k="vestuario" value="${esc(s.vestuario)}"></label>
-      <label class="sw"><input type="checkbox" id="f_stocksy" ${s.stocksy?"checked":""}> Va a Stocksy (exclusiva: vigilar sesiones hermanas)</label>
+      <div class="dest"><label class="sw"><input type="checkbox" id="f_micros" ${dest.micros?"checked":""}> Micros</label>
+        <label class="sw"><input type="checkbox" id="f_stocksy" ${dest.stocksy?"checked":""}> Stocksy</label></div>
     </section>
     <section class="card">
       <div class="sechead"><h2>Guion general</h2></div>
-      <textarea data-k="guion" rows="4" placeholder="Idea de la sesión, tono, orden, cosas a evitar…">${esc(s.guion)}</textarea>
+      <textarea data-k="guion" rows="4" placeholder="Guion">${esc(s.guion)}</textarea>
     </section>
+
+    ${bloqueHead(0,pr)}
     <section class="card">
-      <div class="sechead"><h2>Conceptos</h2><span class="mins">Total ${mins(s)} min</span></div>
-      <div style="display:flex;flex-direction:column;gap:18px">
-      ${(s.conceptos||[]).map((c,i)=>`
-        <div class="concept" data-cid="${esc(c.id)}">
-          <div class="crow"><span class="cnum">${String(i+1).padStart(2,"0")}</span>
-            <input type="text" data-ck="titulo" value="${esc(c.titulo)}" placeholder="Concepto" aria-label="Título del concepto">
-            <input type="number" data-ck="minutos" value="${esc(c.minutos)}" min="0" inputmode="numeric" aria-label="Minutos"></div>
-          <textarea data-ck="guion" rows="3" placeholder="Mini guion: planos de este concepto">${esc(c.guion)}</textarea>
-          <div class="row"><button class="small" data-act="up">↑</button><button class="small" data-act="down">↓</button><button class="small" data-act="del">Quitar concepto</button></div>
-        </div>`).join("")||'<div class="empty">Sin conceptos todavía.</div>'}
-      </div>
-      <button id="addC">+ Añadir concepto</button>
+      <div class="sechead"><h2>Modelos</h2></div>
+      <div>${modelos.map(m=>`
+        <div class="chk ${m.confirmado?'done':''}" data-mid="${esc(m.id)}">
+          <input type="checkbox" data-mf="confirmado" ${m.confirmado?"checked":""} aria-label="Confirmado">
+          <input type="text" data-mf="nombre" value="${esc(m.nombre)}" placeholder="Modelo">
+          <span class="cnt" style="flex:none">confirmado</span>
+          <button class="small" data-act="delm" aria-label="Quitar modelo">✕</button>
+        </div>`).join("")||'<div class="empty">Sin modelos.</div>'}</div>
+      <button id="addM">+ Añadir modelo</button>
     </section>
     <section class="card">
       <div class="sechead"><h2>Props</h2><span class="pill ${props.length&&have===props.length?'ok':'no'}">Tengo ${have}/${props.length}</span></div>
@@ -271,11 +322,41 @@ function renderDetail(){
         </div>`).join("")||'<div class="empty">Sin props.</div>'}</div>
       <button id="addP">+ Añadir prop</button>
     </section>
+    <section class="card"><div>${fijasHtml(s,0)}</div></section>
+
+    ${bloqueHead(1,pr)}
+    <section class="card"><div>${fijasHtml(s,1)}</div></section>
+
+    ${bloqueHead(2,pr)}
     <section class="card">
-      <div class="sechead"><h2>Checklist antes de la sesión</h2><span class="mins">${ck}/${CHECK_KEYS.length}</span></div>
-      <div class="bar"><i style="width:${Math.round(ck*100/CHECK_KEYS.length)}%"></i></div>
-      <div>${CHECK.map(([g,items])=>`<div class="group">${g}</div>`+items.map(([k,t])=>`
-        <label class="chk ${(s.checklist||{})[k]?'done':''}"><input type="checkbox" data-chk="${k}" ${(s.checklist||{})[k]?"checked":""}><span>${esc(t)}</span></label>`).join("")).join("")}</div>
+      <div class="sechead"><h2>Conceptos</h2><span class="mins">Total ${mins(s)} min</span></div>
+      <div style="display:flex;flex-direction:column;gap:18px">
+      ${conceptos.map((c,i)=>{
+        const pl=c.planos||[], ph=pl.filter(p=>p.hecho).length, open=abiertos.has(c.id);
+        return `
+        <div class="concept ${c.hecho?'done':''}" data-cid="${esc(c.id)}">
+          <div class="crow2"><input type="checkbox" data-ck="hecho" ${c.hecho?"checked":""} aria-label="Hecho">
+            <input type="text" data-ck="titulo" value="${esc(c.titulo)}" placeholder="Concepto" aria-label="Título del concepto">
+            <input type="number" data-ck="minutos" value="${esc(c.minutos)}" min="0" inputmode="numeric" aria-label="Minutos"></div>
+          <div class="row"><span class="cnum">${String(i+1).padStart(2,"0")}</span>
+            <button class="tog" data-act="tog">${open?"▾":"▸"} planos ${ph}/${pl.length}</button>
+            <button class="small" data-act="up">↑</button><button class="small" data-act="down">↓</button><button class="small" data-act="del">Quitar</button></div>
+          ${open?`<div>
+            <textarea data-ck="guion" rows="3" placeholder="Mini guion">${esc(c.guion)}</textarea>
+            ${pl.map(p=>`<div class="plano ${p.hecho?'done':''}" data-plid="${esc(p.id)}">
+              <input type="checkbox" data-pf="hecho" ${p.hecho?"checked":""} aria-label="Plano hecho">
+              <input type="text" data-pf="texto" value="${esc(p.texto)}" placeholder="Plano">
+              <button class="small" data-act="pup" aria-label="Subir">↑</button><button class="small" data-act="pdown" aria-label="Bajar">↓</button><button class="small" data-act="pdel" aria-label="Quitar plano">✕</button>
+            </div>`).join("")}
+            <button class="small" data-act="padd" style="margin-top:8px">+ Añadir plano</button></div>`:""}
+        </div>`}).join("")||'<div class="empty">Sin conceptos.</div>'}
+      </div>
+      <button id="addC">+ Añadir concepto</button>
+    </section>
+    <section class="card"><div>
+      ${modelos.map(m=>chkHtml(`data-mrel="${esc(m.id)}"`,!!m.release,`${esc(m.nombre||"Modelo")} · release firmado`)).join("")}
+      ${parteOn(s)?chkHtml(`data-chk="parteStocksy"`,!!(s.checklist||{}).parteStocksy,esc(PARTE_TXT)):""}
+      ${fijasHtml(s,2)}</div>
     </section>
     <div class="row"><button id="arch">${s.archivada?"Recuperar de archivadas":"Archivar sesión"}</button></div>
   </div>`;
@@ -287,18 +368,49 @@ function bindDetail(){
   $("#back").onclick=closeSession;
   $("#copy").onclick=()=>{const t=slug(cur);try{navigator.clipboard.writeText(t).then(()=>{$("#copy").textContent="Copiado"},selectSlug)}catch(e){selectSlug()}};
   d.querySelectorAll("[data-k]").forEach(el=>el.addEventListener("input",()=>{cur[el.dataset.k]=el.value;$("#slugTxt").textContent=slug(cur);touch()}));
-  $("#f_stocksy").onchange=e=>{cur.stocksy=e.target.checked;touch(true)};
+  const setDest=()=>{cur.destino={micros:$("#f_micros").checked,stocksy:$("#f_stocksy").checked};cur.stocksy=cur.destino.stocksy;touch(true);renderDetail()};
+  $("#f_micros").onchange=setDest; $("#f_stocksy").onchange=setDest;
+
+  /* modelos */
+  d.querySelectorAll("[data-mid]").forEach(row=>{
+    const m=cur.modelos.find(x=>x.id===row.dataset.mid);
+    row.querySelector("[data-mf=confirmado]").onchange=e=>{m.confirmado=e.target.checked;touch(true);renderDetail()};
+    row.querySelector("[data-mf=nombre]").addEventListener("input",e=>{m.nombre=e.target.value;touch()});
+    row.querySelector("[data-act=delm]").onclick=()=>{cur.modelos.splice(cur.modelos.indexOf(m),1);touch(true);renderDetail()};
+  });
+  $("#addM").onclick=()=>{(cur.modelos||=[]).push({id:uid(),nombre:"",confirmado:false,release:false});touch(true);renderDetail();[...document.querySelectorAll("[data-mf=nombre]")].pop()?.focus()};
+  d.querySelectorAll("[data-mrel]").forEach(el=>el.onchange=()=>{cur.modelos.find(x=>x.id===el.dataset.mrel).release=el.checked;touch(true);renderDetail()});
+
+  /* conceptos y planos */
   d.querySelectorAll(".concept").forEach(box=>{
     const c=cur.conceptos.find(x=>x.id===box.dataset.cid);
-    box.querySelectorAll("[data-ck]").forEach(el=>el.addEventListener("input",()=>{c[el.dataset.ck]=el.dataset.ck==="minutos"?(+el.value||0):el.value;touch()}));
+    box.querySelectorAll("[data-ck]").forEach(el=>{
+      if(el.dataset.ck==="hecho")el.onchange=()=>{c.hecho=el.checked;touch(true);renderDetail()};
+      else el.addEventListener("input",()=>{c[el.dataset.ck]=el.dataset.ck==="minutos"?(+el.value||0):el.value;touch()});
+    });
+    box.querySelectorAll(".plano").forEach(row=>{
+      const p=c.planos.find(x=>x.id===row.dataset.plid);
+      row.querySelector("[data-pf=hecho]").onchange=e=>{p.hecho=e.target.checked;touch(true);renderDetail()};
+      row.querySelector("[data-pf=texto]").addEventListener("input",e=>{p.texto=e.target.value;touch()});
+    });
     box.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>{
-      const a=cur.conceptos,i=a.indexOf(c);
-      if(b.dataset.act==="del")a.splice(i,1);
-      if(b.dataset.act==="up"&&i>0)[a[i-1],a[i]]=[a[i],a[i-1]];
-      if(b.dataset.act==="down"&&i<a.length-1)[a[i+1],a[i]]=[a[i],a[i+1]];
+      const a=cur.conceptos,i=a.indexOf(c), act=b.dataset.act;
+      if(act==="tog"){abiertos.has(c.id)?abiertos.delete(c.id):abiertos.add(c.id);renderDetail();return}
+      if(act==="padd"){c.planos.push({id:uid(),texto:"",hecho:false});touch(true);renderDetail();[...box.querySelectorAll("[data-pf=texto]")].pop()?.focus();return}
+      if(act.startsWith("p")){
+        const row=b.closest(".plano"), pa=c.planos, p=pa.find(x=>x.id===row.dataset.plid), pi=pa.indexOf(p);
+        if(act==="pdel")pa.splice(pi,1);
+        if(act==="pup"&&pi>0)[pa[pi-1],pa[pi]]=[pa[pi],pa[pi-1]];
+        if(act==="pdown"&&pi<pa.length-1)[pa[pi+1],pa[pi]]=[pa[pi],pa[pi+1]];
+        touch(true);renderDetail();return}
+      if(act==="del")a.splice(i,1);
+      if(act==="up"&&i>0)[a[i-1],a[i]]=[a[i],a[i-1]];
+      if(act==="down"&&i<a.length-1)[a[i+1],a[i]]=[a[i],a[i+1]];
       touch(true);renderDetail()});
   });
-  $("#addC").onclick=()=>{(cur.conceptos||=[]).push({id:uid(),titulo:"",minutos:5,guion:""});touch(true);renderDetail();[...document.querySelectorAll(".concept input[data-ck=titulo]")].pop()?.focus()};
+  $("#addC").onclick=()=>{const id=uid();(cur.conceptos||=[]).push({id,titulo:"",minutos:5,guion:"",hecho:false,planos:[]});abiertos.add(id);touch(true);renderDetail();[...document.querySelectorAll(".concept input[data-ck=titulo]")].pop()?.focus()};
+
+  /* props */
   d.querySelectorAll(".prop").forEach(row=>{
     const p=cur.props.find(x=>x.id===row.dataset.pid);
     row.querySelector("input[type=checkbox]").onchange=e=>{p.tengo=e.target.checked;touch(true);renderDetail()};
@@ -322,7 +434,7 @@ function commit(){
 }
 
 $("#btnNew").onclick=()=>{
-  cur={id:uid()+uid(),nombre:"",fecha:"",lugar:"",modelos:"",vestuario:"",guion:"",stocksy:false,conceptos:[],props:[],checklist:{},creada:new Date().toISOString(),actualizada:""};
+  cur={id:uid()+uid(),nombre:"",fecha:"",lugar:"",modelos:[],vestuario:"",guion:"",stocksy:false,destino:{micros:true,stocksy:false},conceptos:[],props:[],checklist:{},creada:new Date().toISOString(),actualizada:""};
   commit(); renderDetail(); show("#vDetail"); document.querySelector("[data-k=nombre]").focus();
 };
 $("#showArch").onchange=renderList;
