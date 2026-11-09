@@ -91,7 +91,7 @@ section{display:flex;flex-direction:column;gap:12px}
 .tog{border:none;background:none;padding:6px 8px;min-height:36px;font-family:var(--f-mono);font-size:.82rem;color:var(--accent);font-weight:700}
 .plano{display:flex;flex-direction:column;gap:2px;padding:6px 0;border-bottom:1px solid var(--line)}
 .plano .p1{display:flex;align-items:center;gap:8px}
-.plano .p1 input[type=text]{flex:1;min-width:0}
+.plano .p1 textarea{flex:1;min-width:0;resize:none;overflow:hidden;border:none;padding:6px 0;min-height:36px;background:transparent;line-height:1.35;white-space:pre-wrap;word-break:break-word;font:inherit;color:inherit}
 .cact{border:none;border-left:3px solid var(--accent-soft);border-radius:0;padding:4px 8px;min-height:34px;background:transparent;font-size:.92rem}
 .pend{font-size:.7rem;color:var(--accent);font-weight:700;padding-left:11px}
 .mdl{position:fixed;inset:0;z-index:50;background:#111;color:#fff;display:flex;flex-direction:column;
@@ -107,8 +107,7 @@ section{display:flex;flex-direction:column;gap:12px}
 .mdl .nav .spk{flex:none;width:72px;font-size:1.5rem}
 .mdl .lang button.on{background:var(--accent);border-color:var(--accent)}
 .plano input[type=checkbox]{width:22px;height:22px;accent-color:var(--ok);flex:none}
-.plano input[type=text]{border:none;padding:6px 0;min-height:36px;background:transparent}
-.plano.done input[type=text]{color:var(--muted);text-decoration:line-through}
+.plano.done textarea{color:var(--muted);text-decoration:line-through}
 .crow2{display:grid;grid-template-columns:2.2rem 1fr 5.5rem;gap:8px;align-items:center}
 .crow2 input[type=checkbox]{width:24px;height:24px;accent-color:var(--ok);justify-self:center}
 .concept.done .crow2 input[type=text]{color:var(--muted)}
@@ -149,12 +148,7 @@ section{display:flex;flex-direction:column;gap:12px}
 /* Casillas fijas de cada bloque (clave, texto corto). Las claves viejas se conservan en los datos. */
 const BLOQUES = [
   ["Antes de salir de casa", [
-    ["nombre","Nombre decidido"],
-    ["guion","Guion hecho"],
-    ["permiso","Permiso localización"],
     ["vestuario","Vestuario preparado"],
-    ["mr","Releases impresos"],
-    ["pr","Property release"],
     ["bat","Baterías"],
     ["tarj","Tarjetas"],
     ["ajustes","Ajustes cámara"],
@@ -165,12 +159,7 @@ const BLOQUES = [
   ["Al empezar la sesión", [
     ["revVest","Vestuario revisado"],
     ["revProps","Props revisados"]]],
-  ["Durante la sesión", [
-    ["orden","Lo importante primero"],
-    ["hv","Horizontal y vertical"],
-    ["fondo","Fondo limpio"],
-    ["fotorel","Fotos de releases"],
-    ["fotofin","Foto vestuario y sitio"]]]
+  ["Durante la sesión", []]   // 2026-11-09: sin casillas fijas (fotógrafo); solo los conceptos y sus planos
 ];
 const PARTE_TXT="Parte Stocksy hecha: 2 de 3 distintos (vestuario, modelos, localización)";
 const parteOn=s=>!!(s.destino&&s.destino.micros&&s.destino.stocksy);
@@ -249,7 +238,7 @@ function progreso(s){
   const fijas=i=>BLOQUES[i][1].map(([k])=>!!ck[k]);
   const antes=[...fijas(0),...props.map(p=>!!p.tengo),...mo.map(m=>!!m.confirmado)];
   const empezar=fijas(1);
-  const durante=[...fijas(2),...mo.map(m=>!!m.release),...cs.map(c=>!!c.hecho),...cs.flatMap(c=>(c.planos||[]).map(p=>!!p.hecho))];
+  const durante=[...cs.map(c=>!!c.hecho),...cs.flatMap(c=>(c.planos||[]).map(p=>!!p.hecho))];
   if(parteOn(s))durante.push(!!ck.parteStocksy);
   return [cnt(antes),cnt(empezar),cnt(durante)];
 }
@@ -364,7 +353,7 @@ function renderDetail(){
             <div class="pend" data-pend="c" ${c.acting_pendiente?"":"hidden"}>traducción pendiente</div>
             ${pl.map(p=>`<div class="plano ${p.hecho?'done':''}" data-plid="${esc(p.id)}">
               <div class="p1"><input type="checkbox" data-pf="hecho" ${p.hecho?"checked":""} aria-label="Plano hecho">
-              <input type="text" data-pf="texto" value="${esc(p.texto)}" placeholder="Plano">
+              <textarea data-pf="texto" rows="1" placeholder="Plano">${esc(p.texto)}</textarea>
               <button class="small" data-act="pup" aria-label="Subir">↑</button><button class="small" data-act="pdown" aria-label="Bajar">↓</button><button class="small" data-act="pdel" aria-label="Quitar plano">✕</button></div>
             </div>`).join("")}
             <button class="small" data-act="padd" style="margin-top:8px">+ Añadir plano</button></div>`:""}
@@ -372,15 +361,15 @@ function renderDetail(){
       </div>
       <button id="addC">+ Añadir concepto</button>
     </section>
-    <section class="card"><div>
-      ${modelos.map(m=>chkHtml(`data-mrel="${esc(m.id)}"`,!!m.release,`${esc(m.nombre||"Modelo")} · release firmado`)).join("")}
-      ${parteOn(s)?chkHtml(`data-chk="parteStocksy"`,!!(s.checklist||{}).parteStocksy,esc(PARTE_TXT)):""}
-      ${fijasHtml(s,2)}</div>
-    </section>
     <div class="row"><button id="arch">${s.archivada?"Recuperar de archivadas":"Archivar sesión"}</button></div>
   </div>`;
   bindDetail();
+  autoAlto();
 }
+/* planos: el textarea crece con el texto para que se lea entero (fotógrafo, 2026-11-09: con una línea solo se leían 5 palabras) */
+function autoAlto(){document.querySelectorAll(".plano textarea").forEach(t=>{t.style.height="auto";t.style.height=(t.scrollHeight+2)+"px"})}
+document.addEventListener("input",e=>{if(e.target.matches&&e.target.matches(".plano textarea")){e.target.style.height="auto";e.target.style.height=(e.target.scrollHeight+2)+"px"}});
+window.addEventListener("resize",autoAlto);
 
 function bindDetail(){
   const d=$("#vDetail");
