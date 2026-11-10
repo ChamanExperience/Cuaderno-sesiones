@@ -110,7 +110,9 @@ section{display:flex;flex-direction:column;gap:12px}
 .plano.done textarea{color:var(--muted);text-decoration:line-through}
 .crow2{display:grid;grid-template-columns:2.2rem 1fr 5.5rem;gap:8px;align-items:center}
 .crow2 input[type=checkbox]{width:24px;height:24px;accent-color:var(--ok);justify-self:center}
-.concept.done .crow2 input[type=text]{color:var(--muted)}
+.concept.done .crow2 .ctit{color:var(--muted)}
+.ctit{resize:none;overflow:hidden;min-height:44px;line-height:1.3;white-space:pre-wrap;word-break:break-word}
+.cact.cact{resize:none;overflow:hidden;line-height:1.35;white-space:pre-wrap;word-break:break-word}
 .dest{display:flex;gap:18px;flex-wrap:wrap}
 </style>
 </head>
@@ -342,14 +344,14 @@ function renderDetail(){
         return `
         <div class="concept ${c.hecho?'done':''}" data-cid="${esc(c.id)}">
           <div class="crow2"><input type="checkbox" data-ck="hecho" ${c.hecho?"checked":""} aria-label="Hecho">
-            <input type="text" data-ck="titulo" value="${esc(c.titulo)}" placeholder="Concepto" aria-label="Título del concepto">
+            <textarea class="ctit" data-ck="titulo" rows="1" placeholder="Concepto" aria-label="Título del concepto">${esc(c.titulo)}</textarea>
             <input type="number" data-ck="minutos" value="${esc(c.minutos)}" min="0" inputmode="numeric" aria-label="Minutos"></div>
           <div class="row"><span class="cnum">${String(i+1).padStart(2,"0")}</span>
             <button class="tog" data-act="tog">${open?"▾":"▸"} planos ${ph}/${pl.length}</button>
             <button class="small" data-act="show">Mostrar al modelo</button><button class="small" data-act="up">↑</button><button class="small" data-act="down">↓</button><button class="small" data-act="del">Quitar</button></div>
           ${open?`<div>
             <textarea data-ck="guion" rows="3" placeholder="Mini guion">${esc(c.guion)}</textarea>
-            <input type="text" class="cact" data-ck="acting" value="${esc(c.acting)}" placeholder="Acting general (modelo)" aria-label="Acting general">
+            <textarea class="cact" data-ck="acting" rows="1" placeholder="Acting general (modelo)" aria-label="Acting general">${esc(c.acting)}</textarea>
             <div class="pend" data-pend="c" ${c.acting_pendiente?"":"hidden"}>traducción pendiente</div>
             ${pl.map(p=>`<div class="plano ${p.hecho?'done':''}" data-plid="${esc(p.id)}">
               <div class="p1"><input type="checkbox" data-pf="hecho" ${p.hecho?"checked":""} aria-label="Plano hecho">
@@ -367,8 +369,8 @@ function renderDetail(){
   autoAlto();
 }
 /* planos: el textarea crece con el texto para que se lea entero (fotógrafo, 2026-11-09: con una línea solo se leían 5 palabras) */
-function autoAlto(){document.querySelectorAll(".plano textarea").forEach(t=>{t.style.height="auto";t.style.height=(t.scrollHeight+2)+"px"})}
-document.addEventListener("input",e=>{if(e.target.matches&&e.target.matches(".plano textarea")){e.target.style.height="auto";e.target.style.height=(e.target.scrollHeight+2)+"px"}});
+function autoAlto(){document.querySelectorAll(".plano textarea,.ctit,.cact").forEach(t=>{t.style.height="auto";t.style.height=(t.scrollHeight+2)+"px"})}
+document.addEventListener("input",e=>{if(e.target.matches&&e.target.matches(".plano textarea,.ctit,.cact")){e.target.style.height="auto";e.target.style.height=(e.target.scrollHeight+2)+"px"}});
 window.addEventListener("resize",autoAlto);
 
 function bindDetail(){
@@ -419,7 +421,7 @@ function bindDetail(){
       if(act==="down"&&i<a.length-1)[a[i+1],a[i]]=[a[i],a[i+1]];
       touch(true);renderDetail()});
   });
-  $("#addC").onclick=()=>{const id=uid();(cur.conceptos||=[]).push({id,titulo:"",minutos:5,guion:"",hecho:false,planos:[]});abiertos.add(id);touch(true);renderDetail();[...document.querySelectorAll(".concept input[data-ck=titulo]")].pop()?.focus()};
+  $("#addC").onclick=()=>{const id=uid();(cur.conceptos||=[]).push({id,titulo:"",minutos:5,guion:"",hecho:false,planos:[]});abiertos.add(id);touch(true);renderDetail();[...document.querySelectorAll(".concept [data-ck=titulo]")].pop()?.focus()};
 
   /* props */
   d.querySelectorAll(".prop").forEach(row=>{
