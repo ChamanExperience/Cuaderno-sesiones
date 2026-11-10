@@ -245,7 +245,7 @@ function progreso(s){
 
 function renderList(){
   const arch=$("#showArch").checked;
-  const rows=Object.values(store).filter(s=>!!s.archivada===arch).sort((a,b)=>(b.fecha||"9").localeCompare(a.fecha||"9"));
+  const rows=Object.values(store).filter(s=>!!s.archivada===arch).sort((a,b)=>(a.fecha||"9999").localeCompare(b.fecha||"9999"));
   const el=$("#list");
   if(!rows.length){el.innerHTML=`<div class="empty card">${arch?"No hay sesiones archivadas.":"Aún no hay sesiones. Pulsa <b>+ Nueva sesión</b>."}</div>`;return}
   el.innerHTML=rows.map(s=>{
