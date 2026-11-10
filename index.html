@@ -59,6 +59,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--
 .pill.ok{background:var(--ok-soft);color:var(--ok)}
 .pill.no{background:var(--accent-soft);color:var(--accent)}
 .pill.sx{background:var(--ink);color:var(--paper)}
+.f.sx input{border-left:3px solid var(--ink)}
 section{display:flex;flex-direction:column;gap:12px}
 .sechead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:6px}
 .concept{display:flex;flex-direction:column;gap:10px}
@@ -239,6 +240,7 @@ function progreso(s){
   const cnt=(arr)=>[arr.filter(Boolean).length,arr.length];
   const fijas=i=>BLOQUES[i][1].map(([k])=>!!ck[k]);
   const antes=[...fijas(0),...props.map(p=>!!p.tengo),...mo.map(m=>!!m.confirmado)];
+  if(parteOn(s))antes.push(!!ck.stocksyVest);
   const empezar=fijas(1);
   const durante=[...cs.map(c=>!!c.hecho),...cs.flatMap(c=>(c.planos||[]).map(p=>!!p.hecho))];
   if(parteOn(s))durante.push(!!ck.parteStocksy);
@@ -275,7 +277,7 @@ function openSession(id){cur=normalize(JSON.parse(JSON.stringify(store[id])));re
 function closeSession(){commit();cur=null;renderList();show("#vList")}
 
 const bloqueHead=(i,pr)=>`<h2 class="blk">${BLOQUES[i][0]} <span class="cnt">${pr[i][0]}/${pr[i][1]}</span></h2>`;
-const fijasHtml=(s,i)=>BLOQUES[i][1].map(([k,t])=>chkHtml(`data-chk="${k}"`,!!(s.checklist||{})[k],esc(t))).join("");
+const fijasHtml=(s,i)=>BLOQUES[i][1].map(([k,t])=>chkHtml(`data-chk="${k}"`,!!(s.checklist||{})[k],esc(t))).join("")+(i===0&&parteOn(s)?chkHtml(`data-chk="stocksyVest"`,!!(s.checklist||{}).stocksyVest,"Vestuario extra Stocksy"):"");
 const chkHtml=(attr,on,inner)=>`<label class="chk ${on?'done':''}"><input type="checkbox" ${attr} ${on?"checked":""}><span>${inner}</span></label>`;
 
 function renderDetail(){
@@ -298,6 +300,7 @@ function renderDetail(){
         <label class="f">Fecha<input type="date" data-k="fecha" value="${esc(s.fecha)}"></label>
         <label class="f">Localización<input type="text" data-k="lugar" value="${esc(s.lugar)}"></label>
         <label class="f">Vestuario<input type="text" data-k="vestuario" value="${esc(s.vestuario)}"></label>
+        ${parteOn(s)?`<label class="f sx">Solo Stocksy (vestuario extra, localización)<input type="text" data-k="stocksy_extra" value="${esc(s.stocksy_extra||"")}" placeholder="Extra outfit; location only for Stocksy"></label>`:""}
       </div>
       <div class="dest"><label class="sw"><input type="checkbox" id="f_micros" ${dest.micros?"checked":""}> Micros</label>
         <label class="sw"><input type="checkbox" id="f_stocksy" ${dest.stocksy?"checked":""}> Stocksy</label></div>
@@ -346,7 +349,7 @@ function renderDetail(){
           <div class="crow2"><input type="checkbox" data-ck="hecho" ${c.hecho?"checked":""} aria-label="Hecho">
             <textarea class="ctit" data-ck="titulo" rows="1" placeholder="Concepto" aria-label="Título del concepto">${esc(c.titulo)}</textarea>
             <input type="number" data-ck="minutos" value="${esc(c.minutos)}" min="0" inputmode="numeric" aria-label="Minutos"></div>
-          <div class="row"><span class="cnum">${String(i+1).padStart(2,"0")}</span>
+          <div class="row"><span class="cnum">${String(i+1).padStart(2,"0")}</span>${c.solo_stocksy?`<span class="pill sx">STOCKSY</span>`:""}${parteOn(s)?`<label class="sw small"><input type="checkbox" data-ck="solo_stocksy" ${c.solo_stocksy?"checked":""}> Solo Stocksy</label>`:""}
             <button class="tog" data-act="tog">${open?"▾":"▸"} planos ${ph}/${pl.length}</button>
             <button class="small" data-act="show">Mostrar al modelo</button><button class="small" data-act="up">↑</button><button class="small" data-act="down">↓</button><button class="small" data-act="del">Quitar</button></div>
           ${open?`<div>
@@ -394,7 +397,7 @@ function bindDetail(){
   d.querySelectorAll(".concept").forEach(box=>{
     const c=cur.conceptos.find(x=>x.id===box.dataset.cid);
     box.querySelectorAll("[data-ck]").forEach(el=>{
-      if(el.dataset.ck==="hecho")el.onchange=()=>{c.hecho=el.checked;touch(true);renderDetail()};
+      if(el.dataset.ck==="hecho"||el.dataset.ck==="solo_stocksy")el.onchange=()=>{c[el.dataset.ck]=el.checked;touch(true);renderDetail()};
       else el.addEventListener("input",()=>{c[el.dataset.ck]=el.dataset.ck==="minutos"?(+el.value||0):el.value;
         if(el.dataset.ck==="acting"){c.acting_pendiente=true;const pd=box.querySelector("[data-pend=c]");if(pd)pd.hidden=false}
         touch()});
