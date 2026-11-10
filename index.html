@@ -350,8 +350,7 @@ function renderDetail(){
             <button class="tog" data-act="tog">${open?"▾":"▸"} planos ${ph}/${pl.length}</button>
             <button class="small" data-act="show">Mostrar al modelo</button><button class="small" data-act="up">↑</button><button class="small" data-act="down">↓</button><button class="small" data-act="del">Quitar</button></div>
           ${open?`<div>
-            <textarea data-ck="guion" rows="3" placeholder="Mini guion">${esc(c.guion)}</textarea>
-            <textarea class="cact" data-ck="acting" rows="1" placeholder="Acting general (modelo)" aria-label="Acting general">${esc(c.acting)}</textarea>
+            <textarea class="cact" data-ck="acting" rows="1" placeholder="Concept (what happens; this is what the model sees)" aria-label="Concept">${esc(c.acting)}</textarea>
             <div class="pend" data-pend="c" ${c.acting_pendiente?"":"hidden"}>traducción pendiente</div>
             ${pl.map(p=>`<div class="plano ${p.hecho?'done':''}" data-plid="${esc(p.id)}">
               <div class="p1"><input type="checkbox" data-pf="hecho" ${p.hecho?"checked":""} aria-label="Plano hecho">
