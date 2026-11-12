@@ -115,6 +115,16 @@ section{display:flex;flex-direction:column;gap:12px}
 .ctit{resize:none;overflow:hidden;min-height:44px;line-height:1.3;white-space:pre-wrap;word-break:break-word}
 .cact.cact{resize:none;overflow:hidden;line-height:1.35;white-space:pre-wrap;word-break:break-word}
 .dest{display:flex;gap:18px;flex-wrap:wrap}
+.accion{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;background:var(--bg)}
+.accion.done .cact{color:var(--muted);text-decoration:line-through}
+.arow{display:flex;align-items:flex-start;gap:8px}
+.arow input[type=checkbox]{width:24px;height:24px;accent-color:var(--ok);flex:none;margin-top:8px}
+.arow .cact{flex:1;min-width:0}
+.accion .row{gap:6px}
+.pl{margin-left:6px;padding-left:10px;border-left:2px solid var(--line)}
+.trad{font-size:.82rem;color:var(--muted);padding-left:11px;overflow-wrap:anywhere}
+.trad b{font-family:var(--f-mono);font-size:.72rem;color:var(--accent)}
+#toast{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:60;background:var(--ink);color:var(--paper);border-radius:10px;padding:12px 14px;font-size:.92rem;max-width:660px;margin:0 auto}
 </style>
 </head>
 <body>
@@ -146,6 +156,7 @@ section{display:flex;flex-direction:column;gap:12px}
   <div id="vDetail" hidden></div>
 </div>
 <div id="vModelo" class="mdl" hidden></div>
+<div id="toast" hidden></div>
 
 <script>
 /* Casillas fijas de cada bloque (clave, texto corto). Las claves viejas se conservan en los datos. */
@@ -185,7 +196,18 @@ function normalize(s){
   s.modelos=s.modelos.map(m=>typeof m==="string"?{id:uid(),nombre:m,confirmado:false,release:false}:m);
   if(!s.destino||typeof s.destino!=="object")s.destino={micros:!s.stocksy,stocksy:!!s.stocksy};
   s.stocksy=!!s.destino.stocksy; // la hoja de Google sigue leyendo este campo
-  s.conceptos=(s.conceptos||[]).map(c=>{if(!Array.isArray(c.planos))c.planos=[];if(c.hecho==null)c.hecho=false;return c});
+  s.conceptos=(s.conceptos||[]).map(c=>{
+    if(!c.id)c.id=uid();
+    if(!Array.isArray(c.planos))c.planos=[];if(c.hecho==null)c.hecho=false;
+    /* 2026-11-12: SESIÓN > CONCEPTOS > ACCIONES > PLANOS. Un concepto antiguo (acting + planos directos) pasa a tener UNA acción con ese acting y esos planos.
+       Los campos antiguos (c.acting, c.acting_en, c.acting_th, c.planos) se conservan sin tocar. */
+    if(!Array.isArray(c.acciones)){
+      const hay=[c.acting,c.acting_en,c.acting_th].some(x=>(x||"").trim())||c.planos.length;
+      c.acciones=hay?[{id:"a_"+c.id,acting:c.acting||"",acting_en:c.acting_en||"",acting_th:c.acting_th||"",acting_pendiente:!!c.acting_pendiente,hecho:false,
+        planos:JSON.parse(JSON.stringify(c.planos))}]:[];
+    }
+    c.acciones=c.acciones.map(a=>{if(!a.id)a.id=uid();if(!Array.isArray(a.planos))a.planos=[];if(a.hecho==null)a.hecho=false;return a});
+    return c});
   s.props=s.props||[]; s.checklist=s.checklist||{};
   return s;
 }
@@ -227,7 +249,8 @@ async function sync(){
 
 /* ---------- interfaz ---------- */
 let cur=null, saveTimer=null;
-const abiertos=new Set(); // conceptos con los planos desplegados (solo vista)
+const abiertos=new Set(); // conceptos con las acciones desplegadas (solo vista)
+const abiertosA=new Set(); // acciones con los planos desplegados (solo vista)
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const slug=s=>(s.fecha||"AAAA-MM-DD")+"_"+(s.nombre||"Nombre");
 const mins=s=>(s.conceptos||[]).reduce((a,c)=>a+(+c.minutos||0),0);
@@ -242,7 +265,7 @@ function progreso(s){
   const antes=[...fijas(0),...props.map(p=>!!p.tengo),...mo.map(m=>!!m.confirmado)];
   if(parteOn(s))antes.push(!!ck.stocksyVest);
   const empezar=fijas(1);
-  const durante=[...cs.map(c=>!!c.hecho),...cs.flatMap(c=>(c.planos||[]).map(p=>!!p.hecho))];
+  const durante=[...cs.map(c=>!!c.hecho),...cs.flatMap(c=>(c.acciones||[]).flatMap(a=>[!!a.hecho,...(a.planos||[]).map(p=>!!p.hecho)]))];
   if(parteOn(s))durante.push(!!ck.parteStocksy);
   return [cnt(antes),cnt(empezar),cnt(durante)];
 }
@@ -280,6 +303,24 @@ const bloqueHead=(i,pr)=>`<h2 class="blk">${BLOQUES[i][0]} <span class="cnt">${p
 const fijasHtml=(s,i)=>BLOQUES[i][1].map(([k,t])=>chkHtml(`data-chk="${k}"`,!!(s.checklist||{})[k],esc(t))).join("")+(i===0&&parteOn(s)?chkHtml(`data-chk="stocksyVest"`,!!(s.checklist||{}).stocksyVest,"Vestuario extra Stocksy"):"");
 const chkHtml=(attr,on,inner)=>`<label class="chk ${on?'done':''}"><input type="checkbox" ${attr} ${on?"checked":""}><span>${inner}</span></label>`;
 
+function accionHtml(a,j){
+  const pl=a.planos||[], ph=pl.filter(p=>p.hecho).length, op=abiertosA.has(a.id), tx=(a.acting||"").trim();
+  return `<div class="accion ${a.hecho?'done':''}" data-aid="${esc(a.id)}">
+    <div class="arow"><input type="checkbox" data-af="hecho" ${a.hecho?"checked":""} aria-label="Acción hecha">
+      <textarea class="cact" data-af="acting" rows="1" placeholder="Action ${j+1} (what the model does)" aria-label="Acción">${esc(a.acting)}</textarea></div>
+    <div class="pend" data-pend ${a.acting_pendiente&&tx?"":"hidden"}>traducción pendiente</div>
+    ${(a.acting_en||a.acting_th)?`<div class="trad">${a.acting_en?`<b>EN</b> ${esc(a.acting_en)}<br>`:""}${a.acting_th?`<b>TH</b> ${esc(a.acting_th)}`:""}</div>`:""}
+    <div class="row"><button class="tog" data-act="atog">${op?"▾":"▸"} planos ${ph}/${pl.length}</button>
+      <button class="small" data-act="atr">Traducir</button><button class="small" data-act="ashow">Mostrar</button>
+      <button class="small" data-act="aup" aria-label="Subir acción">↑</button><button class="small" data-act="adown" aria-label="Bajar acción">↓</button><button class="small" data-act="adel">Quitar</button></div>
+    ${op?`<div class="pl">${pl.map(p=>`<div class="plano ${p.hecho?'done':''}" data-plid="${esc(p.id)}">
+      <div class="p1"><input type="checkbox" data-pf="hecho" ${p.hecho?"checked":""} aria-label="Plano hecho">
+      <textarea data-pf="texto" rows="1" placeholder="Plano">${esc(p.texto)}</textarea>
+      <button class="small" data-act="pup" aria-label="Subir">↑</button><button class="small" data-act="pdown" aria-label="Bajar">↓</button><button class="small" data-act="pdel" aria-label="Quitar plano">✕</button></div>
+    </div>`).join("")}
+    <button class="small" data-act="padd" style="margin-top:8px">+ Añadir plano</button></div>`:""}
+  </div>`;
+}
 function renderDetail(){
   const s=cur, d=$("#vDetail");
   const props=s.props||[], have=props.filter(p=>p.tengo).length;
@@ -343,27 +384,22 @@ function renderDetail(){
       <div class="sechead"><h2>Conceptos</h2><span class="mins">Total ${mins(s)} min</span></div>
       <div style="display:flex;flex-direction:column;gap:18px">
       ${conceptos.map((c,i)=>{
-        const pl=c.planos||[], ph=pl.filter(p=>p.hecho).length, open=abiertos.has(c.id);
+        const ac=c.acciones||[], ah=ac.filter(a=>a.hecho).length, open=abiertos.has(c.id);
+        const np=ac.reduce((n,a)=>n+(a.planos||[]).length,0), nph=ac.reduce((n,a)=>n+(a.planos||[]).filter(p=>p.hecho).length,0);
         return `
         <div class="concept ${c.hecho?'done':''}" data-cid="${esc(c.id)}">
           <div class="crow2"><input type="checkbox" data-ck="hecho" ${c.hecho?"checked":""} aria-label="Hecho">
             <textarea class="ctit" data-ck="titulo" rows="1" placeholder="Concepto" aria-label="Título del concepto">${esc(c.titulo)}</textarea>
             <input type="number" data-ck="minutos" value="${esc(c.minutos)}" min="0" inputmode="numeric" aria-label="Minutos"></div>
           <div class="row"><span class="cnum">${String(i+1).padStart(2,"0")}</span>${c.solo_stocksy?`<span class="pill sx">STOCKSY</span>`:""}${parteOn(s)?`<label class="sw small"><input type="checkbox" data-ck="solo_stocksy" ${c.solo_stocksy?"checked":""}> Solo Stocksy</label>`:""}
-            <button class="tog" data-act="tog">${open?"▾":"▸"} planos ${ph}/${pl.length}</button>
+            <button class="tog" data-act="tog">${open?"▾":"▸"} acciones ${ah}/${ac.length} · planos ${nph}/${np}</button>
             <button class="small" data-act="show">Mostrar al modelo</button><button class="small" data-act="up">↑</button><button class="small" data-act="down">↓</button><button class="small" data-act="del">Quitar</button></div>
-          ${open?`<div>
-            <textarea class="cact" data-ck="acting" rows="1" placeholder="Concept (what happens; this is what the model sees)" aria-label="Concept">${esc(c.acting)}</textarea>
-            <div class="pend" data-pend="c" ${c.acting_pendiente?"":"hidden"}>traducción pendiente</div>
-            ${pl.map(p=>`<div class="plano ${p.hecho?'done':''}" data-plid="${esc(p.id)}">
-              <div class="p1"><input type="checkbox" data-pf="hecho" ${p.hecho?"checked":""} aria-label="Plano hecho">
-              <textarea data-pf="texto" rows="1" placeholder="Plano">${esc(p.texto)}</textarea>
-              <button class="small" data-act="pup" aria-label="Subir">↑</button><button class="small" data-act="pdown" aria-label="Bajar">↓</button><button class="small" data-act="pdel" aria-label="Quitar plano">✕</button></div>
-            </div>`).join("")}
-            <button class="small" data-act="padd" style="margin-top:8px">+ Añadir plano</button></div>`:""}
+          ${open?`<div style="display:flex;flex-direction:column;gap:8px">
+            ${ac.map((a,j)=>accionHtml(a,j)).join("")}
+            <button class="small" data-act="aadd">+ Añadir acción</button></div>`:""}
         </div>`}).join("")||'<div class="empty">Sin conceptos.</div>'}
       </div>
-      <button id="addC">+ Añadir concepto</button>
+      <div class="row"><button id="addC">+ Añadir concepto</button><button id="trAll">Traducir pendientes</button></div>
     </section>
     <div class="row"><button id="arch">${s.archivada?"Recuperar de archivadas":"Archivar sesión"}</button></div>
   </div>`;
@@ -393,37 +429,54 @@ function bindDetail(){
   $("#addM").onclick=()=>{(cur.modelos||=[]).push({id:uid(),nombre:"",confirmado:false,release:false});touch(true);renderDetail();[...document.querySelectorAll("[data-mf=nombre]")].pop()?.focus()};
   d.querySelectorAll("[data-mrel]").forEach(el=>el.onchange=()=>{cur.modelos.find(x=>x.id===el.dataset.mrel).release=el.checked;touch(true);renderDetail()});
 
-  /* conceptos y planos */
+  /* conceptos > acciones > planos */
   d.querySelectorAll(".concept").forEach(box=>{
     const c=cur.conceptos.find(x=>x.id===box.dataset.cid);
-    box.querySelectorAll("[data-ck]").forEach(el=>{
+    box.querySelectorAll(":scope > .crow2 [data-ck], :scope > .row [data-ck]").forEach(el=>{
       if(el.dataset.ck==="hecho"||el.dataset.ck==="solo_stocksy")el.onchange=()=>{c[el.dataset.ck]=el.checked;touch(true);renderDetail()};
-      else el.addEventListener("input",()=>{c[el.dataset.ck]=el.dataset.ck==="minutos"?(+el.value||0):el.value;
-        if(el.dataset.ck==="acting"){c.acting_pendiente=true;const pd=box.querySelector("[data-pend=c]");if(pd)pd.hidden=false}
-        touch()});
+      else el.addEventListener("input",()=>{c[el.dataset.ck]=el.dataset.ck==="minutos"?(+el.value||0):el.value;touch()});
     });
-    box.querySelectorAll(".plano").forEach(row=>{
-      const p=c.planos.find(x=>x.id===row.dataset.plid);
-      row.querySelector("[data-pf=hecho]").onchange=e=>{p.hecho=e.target.checked;touch(true);renderDetail()};
-      row.querySelector("[data-pf=texto]").addEventListener("input",e=>{p.texto=e.target.value;touch()});
+    box.querySelectorAll(".accion").forEach(row=>{
+      const a=c.acciones.find(x=>x.id===row.dataset.aid);
+      row.querySelector("[data-af=hecho]").onchange=e=>{a.hecho=e.target.checked;touch(true);renderDetail()};
+      row.querySelector("[data-af=acting]").addEventListener("input",e=>{a.acting=e.target.value;a.acting_pendiente=true;
+        const pd=row.querySelector("[data-pend]");if(pd)pd.hidden=!a.acting.trim();touch()});
+      row.querySelectorAll(".plano").forEach(pr=>{
+        const p=a.planos.find(x=>x.id===pr.dataset.plid);
+        pr.querySelector("[data-pf=hecho]").onchange=e=>{p.hecho=e.target.checked;touch(true);renderDetail()};
+        pr.querySelector("[data-pf=texto]").addEventListener("input",e=>{p.texto=e.target.value;touch()});
+      });
     });
+    const mover=(arr,i,dir)=>{const k=i+dir;if(k>=0&&k<arr.length)[arr[i],arr[k]]=[arr[k],arr[i]]};
     box.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>{
-      const a=cur.conceptos,i=a.indexOf(c), act=b.dataset.act;
-      if(act==="tog"){abiertos.has(c.id)?abiertos.delete(c.id):abiertos.add(c.id);renderDetail();return}
-      if(act==="show"){commit();abrirModelo(c);return}
-      if(act==="padd"){c.planos.push({id:uid(),texto:"",acting:"",hecho:false});touch(true);renderDetail();[...box.querySelectorAll("[data-pf=texto]")].pop()?.focus();return}
-      if(act.startsWith("p")){
-        const row=b.closest(".plano"), pa=c.planos, p=pa.find(x=>x.id===row.dataset.plid), pi=pa.indexOf(p);
-        if(act==="pdel")pa.splice(pi,1);
-        if(act==="pup"&&pi>0)[pa[pi-1],pa[pi]]=[pa[pi],pa[pi-1]];
-        if(act==="pdown"&&pi<pa.length-1)[pa[pi+1],pa[pi]]=[pa[pi],pa[pi+1]];
+      const act=b.dataset.act, ael=b.closest(".accion");
+      if(!ael){
+        const arr=cur.conceptos,i=arr.indexOf(c);
+        if(act==="tog"){abiertos.has(c.id)?abiertos.delete(c.id):abiertos.add(c.id);renderDetail();return}
+        if(act==="show"){commit();abrirModelo(c.acciones.find(a=>(a.acting||"").trim()||a.acting_en||a.acting_th)||null);return}
+        if(act==="aadd"){const id=uid();c.acciones.push({id,acting:"",acting_en:"",acting_th:"",acting_pendiente:false,hecho:false,planos:[]});abiertosA.add(id);touch(true);renderDetail();[...box.querySelectorAll("[data-af=acting]")].pop()?.focus();return}
+        if(act==="del")arr.splice(i,1);
+        if(act==="up")mover(arr,i,-1);
+        if(act==="down")mover(arr,i,1);
         touch(true);renderDetail();return}
-      if(act==="del")a.splice(i,1);
-      if(act==="up"&&i>0)[a[i-1],a[i]]=[a[i],a[i-1]];
-      if(act==="down"&&i<a.length-1)[a[i+1],a[i]]=[a[i],a[i+1]];
+      const aa=c.acciones, a=aa.find(x=>x.id===ael.dataset.aid), ai=aa.indexOf(a);
+      if(act==="atog"){abiertosA.has(a.id)?abiertosA.delete(a.id):abiertosA.add(a.id);renderDetail();return}
+      if(act==="ashow"){commit();abrirModelo(a);return}
+      if(act==="atr"){traducirAccion(a,b);return}
+      if(act==="padd"){a.planos.push({id:uid(),texto:"",hecho:false});touch(true);renderDetail();[...document.querySelectorAll(`[data-aid="${a.id}"] [data-pf=texto]`)].pop()?.focus();return}
+      if(act[0]==="p"){
+        const pa=a.planos, p=pa.find(x=>x.id===b.closest(".plano").dataset.plid), pi=pa.indexOf(p);
+        if(act==="pdel")pa.splice(pi,1);
+        if(act==="pup")mover(pa,pi,-1);
+        if(act==="pdown")mover(pa,pi,1);
+        touch(true);renderDetail();return}
+      if(act==="adel")aa.splice(ai,1);
+      if(act==="aup")mover(aa,ai,-1);
+      if(act==="adown")mover(aa,ai,1);
       touch(true);renderDetail()});
   });
-  $("#addC").onclick=()=>{const id=uid();(cur.conceptos||=[]).push({id,titulo:"",minutos:5,guion:"",hecho:false,planos:[]});abiertos.add(id);touch(true);renderDetail();[...document.querySelectorAll(".concept [data-ck=titulo]")].pop()?.focus()};
+  $("#trAll").onclick=traducirPendientes;
+  $("#addC").onclick=()=>{const id=uid();(cur.conceptos||=[]).push({id,titulo:"",minutos:5,guion:"",hecho:false,planos:[],acciones:[]});abiertos.add(id);touch(true);renderDetail();[...document.querySelectorAll(".concept [data-ck=titulo]")].pop()?.focus()};
 
   /* props */
   d.querySelectorAll(".prop").forEach(row=>{
@@ -439,15 +492,13 @@ function bindDetail(){
 /* ---------- Mostrar al modelo ---------- */
 const LS_LANG="cuaderno.idioma";
 let mdl={slides:[],i:0,lang:ls.get(LS_LANG,"en")==="th"?"th":"en",c:null};
-function abrirModelo(c){
-  const slides=[]; let start=0, found=false;
-  (cur.conceptos||[]).forEach(k=>{
-    if(k===c)found=true;
-    if((k.acting||"").trim()||k.acting_en||k.acting_th){slides.push({es:k.acting||"",en:k.acting_en||"",th:k.acting_th||"",pend:!!k.acting_pendiente,self:k===c});}
-  });
-  start=Math.max(0,slides.findIndex(x=>x.self)); if(start<0)start=0;
-  if(!slides.some(x=>x.self)){const idx=cur.conceptos.indexOf(c);start=0;let n=0;cur.conceptos.forEach((k,j)=>{if((k.acting||"").trim()||k.acting_en||k.acting_th){if(j<idx)n++}});start=Math.min(n,Math.max(0,slides.length-1))}
-  mdl={slides,i:start,lang:mdl.lang,c};
+function abrirModelo(a){
+  const slides=[];
+  (cur.conceptos||[]).forEach(k=>(k.acciones||[]).forEach(x=>{
+    if((x.acting||"").trim()||x.acting_en||x.acting_th)slides.push({es:x.acting||"",en:x.acting_en||"",th:x.acting_th||"",pend:!!x.acting_pendiente,self:x===a});
+  }));
+  const start=Math.max(0,slides.findIndex(x=>x.self));
+  mdl={slides,i:start,lang:mdl.lang,c:a};
   $("#vModelo").hidden=false; document.body.style.overflow="hidden";
   drawModelo();
 }
@@ -462,7 +513,7 @@ function drawModelo(){
   v.innerHTML=`<div class="bar2"><div class="lang row"><button data-l="en" class="${m.lang==="en"?"on":""}">EN</button><button data-l="th" class="${m.lang==="th"?"on":""}">TH</button></div>
     <span class="status">${n?(m.i+1)+" / "+n:""}</span><button data-x="close">Cerrar</button></div>
     <p class="es">${sl?esc(sl.es):""}</p>
-    <div class="big ${big?"":"sin"}">${!n?"Ningún concepto tiene acting.":big?esc(big):"Sin traducción a "+(m.lang==="th"?"tailandés":"inglés")}</div>
+    <div class="big ${big?"":"sin"}">${!n?"Ninguna acción tiene texto.":big?esc(big):"Sin traducción a "+(m.lang==="th"?"tailandés":"inglés")}</div>
     <div class="small2" id="mdlNote">${sl&&sl.pend?"traducción pendiente":""}</div>
     <div class="nav"><button data-x="prev" ${m.i<=0?"disabled":""} aria-label="Anterior">‹</button>
       <button class="spk" data-x="spk" aria-label="Leer en voz alta" ${big?"":"disabled"}>🔊</button>
@@ -493,6 +544,41 @@ function hablar(txt){
   document.addEventListener("keydown",e=>{if(v.hidden)return;if(e.key==="Escape")cerrarModelo();if(e.key==="ArrowRight")irModelo(1);if(e.key==="ArrowLeft")irModelo(-1)});
   try{speechSynthesis.onvoiceschanged=()=>{};speechSynthesis.getVoices()}catch(e){}
 })();
+/* ---------- traducción (por acción) ----------
+   La hace el script de Google (LanguageApp.translate, gratis, en la cuenta del fotógrafo) a través de la misma URL /exec. */
+let toastT=null;
+function toast(t,ms){const e=$("#toast");e.textContent=t;e.hidden=!t;clearTimeout(toastT);if(t)toastT=setTimeout(()=>e.hidden=true,ms||7000)}
+async function traducirTexto(texto){
+  const url=apiUrl();
+  if(!url){const e=new Error("Primero configura la sincronización (botón de arriba en la lista de sesiones): la traducción pasa por tu script de Google.");e.claro=true;throw e}
+  let j;
+  try{
+    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({accion:"traducir",texto})});
+    j=await r.json();
+  }catch(err){const e=new Error("Sin conexión: no se pudo traducir. Inténtalo con internet.");e.claro=true;throw e}
+  if(!j.ok){const e=new Error("El script no pudo traducir: "+(j.error||"error"));e.claro=true;throw e}
+  if(!j.traduccion){const e=new Error("Falta actualizar el script de Google: el que tienes no sabe traducir todavía. Pega el Code.gs nuevo y crea una nueva versión de la implementación (pasos en el README).");e.claro=true;throw e}
+  return j.traduccion;
+}
+async function traducirAccion(a,btn,silencio){
+  const tx=(a.acting||"").trim();
+  if(!tx){if(!silencio)toast("Escribe primero la acción.");return false}
+  if(btn){btn.disabled=true;btn.textContent="Traduciendo…"}
+  try{
+    const tr=await traducirTexto(tx);
+    if((a.acting||"").trim()!==tx)return false; // se editó mientras traducía
+    a.acting_en=tr.en||a.acting_en||""; a.acting_th=tr.th||a.acting_th||""; a.acting_pendiente=false;
+    touch(true); renderDetail(); if(!silencio)toast("Traducida a inglés y tailandés.",3000);
+    return true;
+  }catch(e){toast(e.claro?e.message:"No se pudo traducir.");if(btn){btn.disabled=false;btn.textContent="Traducir"}return false}
+}
+async function traducirPendientes(){
+  const todas=(cur.conceptos||[]).flatMap(c=>c.acciones||[]).filter(a=>(a.acting||"").trim()&&(a.acting_pendiente||!a.acting_en||!a.acting_th));
+  if(!todas.length){toast("No hay acciones por traducir.",3000);return}
+  let n=0;
+  for(const a of todas){toast("Traduciendo "+(n+1)+" de "+todas.length+"…",60000);if(!await traducirAccion(a,null,true))return;n++}
+  toast("Traducidas "+n+" acciones.",3000);
+}
 function selectSlug(){const r=document.createRange();r.selectNodeContents($("#slugTxt"));const s=getSelection();s.removeAllRanges();s.addRange(r)}
 
 function touch(now){const st=$("#stDet");if(st)st.textContent="Guardando…";clearTimeout(saveTimer);saveTimer=setTimeout(commit,now?50:700)}
