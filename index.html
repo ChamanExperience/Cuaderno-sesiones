@@ -159,6 +159,13 @@ section{display:flex;flex-direction:column;gap:12px}
 .accion{counter-increment:ac;counter-reset:pl;background:var(--act-soft);border:none;border-left:4px solid var(--act);border-radius:4px 10px 10px 4px;padding:8px 10px 6px}
 .accion::before{content:"Acción " counter(ac);font-family:var(--f-mono);font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--act)}
 .cact{border-left:none;padding:4px 0}
+/* 2026-11-17: cada ACCIÓN en su propia caja, con cabecera azul y aire entre una y otra */
+.acciones{gap:26px;padding-top:16px}
+.accion{background:var(--paper);border:2px solid var(--act);border-radius:12px;overflow:hidden;padding:0 10px 8px;box-shadow:var(--shadow)}
+.accion::before{display:block;margin:0 -10px 6px;padding:6px 10px;background:var(--act);color:#fff;font-size:.78rem}
+.accion.done{border-color:var(--ok)}
+.accion.done::before{background:var(--ok)}
+.pl{background:var(--act-soft);border-left:none;border-radius:8px;margin:6px 0 4px;padding:4px 10px 8px}
 .atools .tog{color:var(--act);padding-left:0;margin-right:auto}
 .trad b{color:var(--act)}
 .pl{margin:4px 0 4px 2px;padding:2px 0 6px 10px;border-left:2px solid var(--act)}
